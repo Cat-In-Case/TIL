@@ -1,5 +1,56 @@
 # TIL
  
+				//다른 카메라를 사용하여 다른 ZBufferParams가 필요한 경우 
+                float4 _CustomZBufferCal_Fixed(float2 Far_Near)
+                {
+                    float4 ZBuffer;
+                    //x = -1 + far / near
+                    ZBuffer.x = -1 + (Far_Near.x / Far_Near.y);
+                    //y = far / near
+                    ZBuffer.y = 1;
+                    //z = x / far
+                    ZBuffer.z = ZBuffer.x / Far_Near.x;
+                    //w = y / far
+                    ZBuffer.w = 1 / Far_Near.x;
+
+                    return ZBuffer;
+                } 
+
+                //GrabPass 사용시 ScreenPos를 가져오는 함수
+				float4 ComputeGrabScreenPos(float4 pos)
+                {
+                    #if UNITY_UV_STARTS_AT_TOP
+                    float scale = -1.0;
+                    #else
+                    float scale = 1.0;
+                    #endif
+                    float4 o = pos * 0.5f;
+                    o.xy = float2(o.x, o.y * scale) + o.w;
+                    o.xy *= 0.5;    
+                    #ifdef UNITY_SINGLE_PASS_STEREO
+                    o.xy = TransformStereoScreenSpaceTex(o.xy, pos.w);
+                    #endif
+                    o.zw = pos.zw;
+                    return o;
+                }
+
+                //사용한 곳 
+                //CustomGrabPass에서 GrabPassCamera의 SolidColor를 GrabTexture에서 마스킹하기 위한 용도
+                float GetSubstractAlpha(float3 main, float3 color) 
+                {
+                    half3 delta = abs(main.xyz - color.xyz);
+                    float alpha = 0;
+                    if (length(delta) < 0.05)
+                    {
+                        alpha = 0;
+                    }
+                    else
+                    {
+                        alpha = 1;
+                    }
+                    return alpha;
+                }
+
 
 float3 getNormalFromTexture(Texture2D t, SamplerState s, float strength, float2 offset, float2 uv)
 {
@@ -33,9 +84,7 @@ float3 voronoiNoise(float2 uv, float scale, float2 resolution, float animateOffs
 		for(int x=-1;x<=1;x++)
 		{
 			float2 neighbor = float2(float(x),float(y));
-			
-		
-i_st + neighbor);
+			i_st + neighbor);
 			p = .5f + .5f * sin(animateOffset + 6.2381f * p);
 			
 			float2 diff = neighbor + p - f_st;
